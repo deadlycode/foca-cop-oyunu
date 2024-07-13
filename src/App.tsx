@@ -121,6 +121,7 @@ const App: React.FC = () => {
     setIsMuted(!isMuted);
   };
 
+
   const generateTrashCan = useCallback(() => {
     return {
       x: GAME_WIDTH + Math.random() * 300,
@@ -200,8 +201,8 @@ const App: React.FC = () => {
           throwTrash();
         }
 
-        // Karakter ekrandan çıkarsa başa koy
-        if (newX >= GAME_WIDTH) {
+        // Karakter ekrandan çıkarsa başa koy (bekleme süresini azalttık)
+        if (newX >= GAME_WIDTH - PLAYER_WIDTH / 2) {
           newX = 0;
         }
 
@@ -324,39 +325,25 @@ const App: React.FC = () => {
     });
   }, [trash, trashCans, trashPiles, player, jump]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const gameRect = e.currentTarget.getBoundingClientRect();
-    const touchY = touch.clientY - gameRect.top;
-
-    if (touchY < GAME_HEIGHT / 3) {
-      jump();
+  const handleButtonClick = useCallback((action: string) => {
+    switch(action) {
+      case 'left':
+        setKeysPressed(new Set(['ArrowLeft']));
+        break;
+      case 'right':
+        setKeysPressed(new Set(['ArrowRight']));
+        break;
+      case 'jump':
+        jump();
+        break;
+      case 'throw':
+        throwTrash();
+        break;
     }
-  }, [jump]);
-
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    const touch = e.touches[0];
-    const gameRect = e.currentTarget.getBoundingClientRect();
-    const touchX = touch.clientX - gameRect.left;
-
-    setKeysPressed(new Set());
-    if (touchX < GAME_WIDTH / 2) {
-      setKeysPressed(prev => new Set(prev).add('ArrowLeft'));
-    } else {
-      setKeysPressed(prev => new Set(prev).add('ArrowRight'));
-    }
-  }, []);
-
-  const handleTouchEnd = useCallback(() => {
-    setKeysPressed(new Set());
-  }, []);
-
-  const handleTap = useCallback(() => {
-    throwTrash();
-  }, [throwTrash]);
+  }, [jump, throwTrash]);
 
   return (
-    <div className="flex justify-center items-center h-screen bg-blue-200">
+    <div className="flex flex-col justify-center items-center h-screen bg-blue-200">
       <div 
         className="relative overflow-hidden" 
         style={{ 
@@ -364,10 +351,6 @@ const App: React.FC = () => {
           height: GAME_HEIGHT, 
           touchAction: 'none'
         }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onClick={handleTap}
       >
         <div
           style={{
@@ -463,8 +446,15 @@ const App: React.FC = () => {
           {isMuted ? '🔇' : '🔊'}
         </button>
       </div>
+      <div className="flex justify-between w-full max-w-md mt-4">
+        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('left')} onTouchEnd={() => setKeysPressed(new Set())}>Sol</button>
+        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('jump')} onTouchEnd={() => setKeysPressed(new Set())}>Zıpla</button>
+        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('throw')} onTouchEnd={() => setKeysPressed(new Set())}>Çöp At</button>
+        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('right')} onTouchEnd={() => setKeysPressed(new Set())}>Sağ</button>
+      </div>
     </div>
   );
 };
 
 export default App;
+
