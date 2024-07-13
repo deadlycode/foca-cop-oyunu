@@ -121,7 +121,6 @@ const App: React.FC = () => {
     setIsMuted(!isMuted);
   };
 
-
   const generateTrashCan = useCallback(() => {
     return {
       x: GAME_WIDTH + Math.random() * 300,
@@ -282,7 +281,6 @@ const App: React.FC = () => {
 
     return () => clearInterval(gameLoop);
   }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed]);
-
 
   useEffect(() => {
     trash.forEach((t, index) => {
@@ -447,14 +445,41 @@ const App: React.FC = () => {
         </button>
       </div>
       <div className="flex justify-between w-full max-w-md mt-4">
-        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('left')} onTouchEnd={() => setKeysPressed(new Set())}>Sol</button>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('jump')} onTouchEnd={() => setKeysPressed(new Set())}>Zıpla</button>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('throw')} onTouchEnd={() => setKeysPressed(new Set())}>Çöp At</button>
-        <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => handleButtonClick('right')} onTouchEnd={() => setKeysPressed(new Set())}>Sağ</button>
+        <button 
+          className="bg-blue-500 text-white px-4 py-2 rounded select-none" 
+          onTouchStart={() => handleButtonClick('left')} 
+          onTouchEnd={() => setKeysPressed(new Set())}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          Sol
+        </button>
+        <button 
+          className="bg-blue-500 text-white px-4 py-2 rounded select-none" 
+          onTouchStart={() => handleButtonClick('jump')} 
+          onTouchEnd={() => setKeysPressed(new Set())}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          Zıpla
+        </button>
+        <button 
+          className="bg-blue-500 text-white px-4 py-2 rounded select-none" 
+          onTouchStart={() => handleButtonClick('throw')} 
+          onTouchEnd={() => setKeysPressed(new Set())}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          Çöp At
+        </button>
+        <button 
+          className="bg-blue-500 text-white px-4 py-2 rounded select-none" 
+          onTouchStart={() => handleButtonClick('right')} 
+          onTouchEnd={() => setKeysPressed(new Set())}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          Sağ
+        </button>
       </div>
     </div>
   );
 };
 
 export default App;
-
