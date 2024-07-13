@@ -75,6 +75,7 @@ const App: React.FC = () => {
   const [keysPressed, setKeysPressed] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
   const [cameraOffset, setCameraOffset] = useState(0);
+  const [worldPosition, setWorldPosition] = useState(0);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -122,20 +123,19 @@ const App: React.FC = () => {
     setIsMuted(!isMuted);
   };
 
-
   const generateTrashCan = useCallback(() => {
     return {
-      x: cameraOffset + GAME_WIDTH + Math.random() * 300,
+      x: worldPosition + GAME_WIDTH + Math.random() * 300,
       y: GAME_HEIGHT - TRASH_CAN_HEIGHT - 10
     };
-  }, [cameraOffset]);
+  }, [worldPosition]);
 
   const generateTrashPile = useCallback(() => {
     return {
-      x: cameraOffset + GAME_WIDTH + Math.random() * 500,
+      x: worldPosition + GAME_WIDTH + Math.random() * 500,
       y: GAME_HEIGHT - TRASH_PILE_HEIGHT - 10
     };
-  }, [cameraOffset]);
+  }, [worldPosition]);
 
   const jump = useCallback(() => {
     const currentTime = Date.now();
@@ -190,10 +190,10 @@ const App: React.FC = () => {
       setPlayer(prev => {
         let newX = prev.x;
         if (keysPressed.has('ArrowLeft')) {
-          newX = Math.max(cameraOffset, prev.x - PLAYER_SPEED);
+          newX = Math.max(worldPosition, prev.x - PLAYER_SPEED);
         }
         if (keysPressed.has('ArrowRight')) {
-          newX = Math.min(cameraOffset + GAME_WIDTH - PLAYER_WIDTH, prev.x + PLAYER_SPEED);
+          newX = prev.x + PLAYER_SPEED;
         }
         if (keysPressed.has('Space')) {
           jump();
@@ -222,15 +222,17 @@ const App: React.FC = () => {
         });
       }
 
-      setCameraOffset(prev => {
-        const targetOffset = player.x - GAME_WIDTH / 2 + PLAYER_WIDTH / 2;
-        return prev + (targetOffset - prev) * 0.1;
+      setWorldPosition(prev => {
+        const targetPosition = player.x - GAME_WIDTH / 2 + PLAYER_WIDTH / 2;
+        return prev + (targetPosition - prev) * 0.1;
       });
+
+      setCameraOffset(worldPosition);
 
       setTrashCans(prev => {
         const newCans = prev
           .map(can => ({ ...can, x: can.x - SCROLL_SPEED }))
-          .filter(can => can.x > cameraOffset - TRASH_CAN_WIDTH);
+          .filter(can => can.x > worldPosition - TRASH_CAN_WIDTH);
         
         if (newCans.length < 3) {
           newCans.push(generateTrashCan());
@@ -242,7 +244,7 @@ const App: React.FC = () => {
       setTrashPiles(prev => {
         const newPiles = prev
           .map(pile => ({ ...pile, x: pile.x - SCROLL_SPEED }))
-          .filter(pile => pile.x > cameraOffset - TRASH_PILE_WIDTH);
+          .filter(pile => pile.x > worldPosition - TRASH_PILE_WIDTH);
         
         if (newPiles.length < 2) {
           newPiles.push(generateTrashPile());
@@ -268,7 +270,7 @@ const App: React.FC = () => {
           velocityY: t.velocityY + 0.5,
           velocityX: t.velocityX * 0.99
         };
-      }).filter(t => t.x > cameraOffset - TRASH_WIDTH));
+      }).filter(t => t.x > worldPosition - TRASH_WIDTH));
 
       setNegativeScores(prev => 
         prev.map(score => ({
@@ -281,7 +283,9 @@ const App: React.FC = () => {
     }, 16);
 
     return () => clearInterval(gameLoop);
-  }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed, cameraOffset]);
+  }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed, worldPosition]);
+
+
 
   useEffect(() => {
     trash.forEach((t, index) => {
@@ -317,25 +321,20 @@ const App: React.FC = () => {
         }
         setNegativeScores(prev => [
           ...prev,
-          { value: TRASH_PILE_PENALTY, x: player.x - cameraOffset, y: player.y, opacity: 1 }
+          { value: TRASH_PILE_PENALTY, x: player.x - worldPosition, y: player.y, opacity: 1 }
         ]);
         jump();
       }
     });
-  }, [trash, trashCans, trashPiles, player, jump, cameraOffset]);
+  }, [trash, trashCans, trashPiles, player, jump, worldPosition]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     const gameRect = e.currentTarget.getBoundingClientRect();
-    const touchX = touch.clientX - gameRect.left;
     const touchY = touch.clientY - gameRect.top;
 
     if (touchY < GAME_HEIGHT / 3) {
       jump();
-    } else if (touchX < GAME_WIDTH / 2) {
-      setKeysPressed(prev => new Set(prev).add('ArrowLeft'));
-    } else {
-      setKeysPressed(prev => new Set(prev).add('ArrowRight'));
     }
   }, [jump]);
 
@@ -377,7 +376,7 @@ const App: React.FC = () => {
         <div
           style={{
             position: 'absolute',
-            left: backgroundPosition - cameraOffset,
+            left: -(worldPosition % GAME_WIDTH),
             top: 0,
             width: GAME_WIDTH * 2,
             height: GAME_HEIGHT,
@@ -394,7 +393,7 @@ const App: React.FC = () => {
             alt="Çöp Kovası"
             className="absolute"
             style={{ 
-              left: can.x - cameraOffset, 
+              left: can.x - worldPosition, 
               top: can.y, 
               width: TRASH_CAN_WIDTH, 
               height: TRASH_CAN_HEIGHT,
@@ -409,7 +408,7 @@ const App: React.FC = () => {
             alt="Çöp Yığını"
             className="absolute"
             style={{ 
-              left: pile.x - cameraOffset, 
+              left: pile.x - worldPosition, 
               top: pile.y, 
               width: TRASH_PILE_WIDTH, 
               height: TRASH_PILE_HEIGHT,
@@ -422,7 +421,7 @@ const App: React.FC = () => {
           alt="İnsan"
           className="absolute"
           style={{ 
-            left: player.x - cameraOffset, 
+            left: GAME_WIDTH / 2 - PLAYER_WIDTH / 2, 
             top: player.y, 
             width: PLAYER_WIDTH,
             height: PLAYER_HEIGHT,
@@ -437,7 +436,7 @@ const App: React.FC = () => {
             alt="Çöp"
             className={`absolute ${t.onGround ? 'opacity-50' : ''}`}
             style={{ 
-              left: t.x - cameraOffset, 
+              left: t.x - worldPosition, 
               top: t.y, 
               width: TRASH_WIDTH, 
               height: TRASH_HEIGHT,
