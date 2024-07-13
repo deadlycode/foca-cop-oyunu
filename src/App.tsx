@@ -282,6 +282,7 @@ const App: React.FC = () => {
     return () => clearInterval(gameLoop);
   }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed]);
 
+
   useEffect(() => {
     trash.forEach((t, index) => {
       if (t.y >= GAME_HEIGHT - TRASH_HEIGHT - 20 && !t.scored && !t.onGround) {
@@ -435,7 +436,7 @@ const App: React.FC = () => {
             {score.value}
           </div>
         ))}
-        <div className="absolute top-4 left-4 text-2xl font-bold text-white" style={{ zIndex: 5 }}>Puan: {score}</div>
+        <div className="absolute top-4 left-4 text-2xl font-bold text-white" style={{ zIndex: 6 }}>Puan: {score}</div>
         <button 
           className="absolute top-4 right-4 text-2xl font-bold text-white bg-blue-500 px-2 py-1 rounded"
           onClick={toggleMute}
