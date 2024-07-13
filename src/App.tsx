@@ -55,7 +55,7 @@ interface NegativeScore {
 
 const App: React.FC = () => {
   const [player, setPlayer] = useState<Player>({ 
-    x: GAME_WIDTH / 2 - PLAYER_WIDTH / 2, 
+    x: 50, 
     y: GAME_HEIGHT - PLAYER_HEIGHT - 10,
     isJumping: false,
     lastJumpTime: 0,
@@ -74,8 +74,6 @@ const App: React.FC = () => {
   const negativeAudioRef = useRef<HTMLAudioElement | null>(null);
   const [keysPressed, setKeysPressed] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
-  const [cameraOffset, setCameraOffset] = useState(0);
-  const [worldPosition, setWorldPosition] = useState(0);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -125,17 +123,17 @@ const App: React.FC = () => {
 
   const generateTrashCan = useCallback(() => {
     return {
-      x: worldPosition + GAME_WIDTH + Math.random() * 300,
+      x: GAME_WIDTH + Math.random() * 300,
       y: GAME_HEIGHT - TRASH_CAN_HEIGHT - 10
     };
-  }, [worldPosition]);
+  }, []);
 
   const generateTrashPile = useCallback(() => {
     return {
-      x: worldPosition + GAME_WIDTH + Math.random() * 500,
+      x: GAME_WIDTH + Math.random() * 500,
       y: GAME_HEIGHT - TRASH_PILE_HEIGHT - 10
     };
-  }, [worldPosition]);
+  }, []);
 
   const jump = useCallback(() => {
     const currentTime = Date.now();
@@ -190,10 +188,10 @@ const App: React.FC = () => {
       setPlayer(prev => {
         let newX = prev.x;
         if (keysPressed.has('ArrowLeft')) {
-          newX = Math.max(worldPosition, prev.x - PLAYER_SPEED);
+          newX = Math.max(0, prev.x - PLAYER_SPEED);
         }
         if (keysPressed.has('ArrowRight')) {
-          newX = prev.x + PLAYER_SPEED;
+          newX = Math.min(GAME_WIDTH - PLAYER_WIDTH, prev.x + PLAYER_SPEED);
         }
         if (keysPressed.has('Space')) {
           jump();
@@ -201,6 +199,12 @@ const App: React.FC = () => {
         if (keysPressed.has('ArrowUp')) {
           throwTrash();
         }
+
+        // Karakter ekrandan çıkarsa başa koy
+        if (newX >= GAME_WIDTH) {
+          newX = 0;
+        }
+
         return { ...prev, x: newX };
       });
 
@@ -222,17 +226,10 @@ const App: React.FC = () => {
         });
       }
 
-      setWorldPosition(prev => {
-        const targetPosition = player.x - GAME_WIDTH / 2 + PLAYER_WIDTH / 2;
-        return prev + (targetPosition - prev) * 0.1;
-      });
-
-      setCameraOffset(worldPosition);
-
       setTrashCans(prev => {
         const newCans = prev
           .map(can => ({ ...can, x: can.x - SCROLL_SPEED }))
-          .filter(can => can.x > worldPosition - TRASH_CAN_WIDTH);
+          .filter(can => can.x > -TRASH_CAN_WIDTH);
         
         if (newCans.length < 3) {
           newCans.push(generateTrashCan());
@@ -244,7 +241,7 @@ const App: React.FC = () => {
       setTrashPiles(prev => {
         const newPiles = prev
           .map(pile => ({ ...pile, x: pile.x - SCROLL_SPEED }))
-          .filter(pile => pile.x > worldPosition - TRASH_PILE_WIDTH);
+          .filter(pile => pile.x > -TRASH_PILE_WIDTH);
         
         if (newPiles.length < 2) {
           newPiles.push(generateTrashPile());
@@ -270,7 +267,7 @@ const App: React.FC = () => {
           velocityY: t.velocityY + 0.5,
           velocityX: t.velocityX * 0.99
         };
-      }).filter(t => t.x > worldPosition - TRASH_WIDTH));
+      }).filter(t => t.x > -TRASH_WIDTH));
 
       setNegativeScores(prev => 
         prev.map(score => ({
@@ -283,8 +280,7 @@ const App: React.FC = () => {
     }, 16);
 
     return () => clearInterval(gameLoop);
-  }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed, worldPosition]);
-
+  }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed]);
 
 
   useEffect(() => {
@@ -321,12 +317,12 @@ const App: React.FC = () => {
         }
         setNegativeScores(prev => [
           ...prev,
-          { value: TRASH_PILE_PENALTY, x: player.x - worldPosition, y: player.y, opacity: 1 }
+          { value: TRASH_PILE_PENALTY, x: player.x, y: player.y, opacity: 1 }
         ]);
         jump();
       }
     });
-  }, [trash, trashCans, trashPiles, player, jump, worldPosition]);
+  }, [trash, trashCans, trashPiles, player, jump]);
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
@@ -376,7 +372,7 @@ const App: React.FC = () => {
         <div
           style={{
             position: 'absolute',
-            left: -(worldPosition % GAME_WIDTH),
+            left: backgroundPosition,
             top: 0,
             width: GAME_WIDTH * 2,
             height: GAME_HEIGHT,
@@ -393,7 +389,7 @@ const App: React.FC = () => {
             alt="Çöp Kovası"
             className="absolute"
             style={{ 
-              left: can.x - worldPosition, 
+              left: can.x, 
               top: can.y, 
               width: TRASH_CAN_WIDTH, 
               height: TRASH_CAN_HEIGHT,
@@ -408,7 +404,7 @@ const App: React.FC = () => {
             alt="Çöp Yığını"
             className="absolute"
             style={{ 
-              left: pile.x - worldPosition, 
+              left: pile.x, 
               top: pile.y, 
               width: TRASH_PILE_WIDTH, 
               height: TRASH_PILE_HEIGHT,
@@ -421,7 +417,7 @@ const App: React.FC = () => {
           alt="İnsan"
           className="absolute"
           style={{ 
-            left: GAME_WIDTH / 2 - PLAYER_WIDTH / 2, 
+            left: player.x, 
             top: player.y, 
             width: PLAYER_WIDTH,
             height: PLAYER_HEIGHT,
@@ -436,7 +432,7 @@ const App: React.FC = () => {
             alt="Çöp"
             className={`absolute ${t.onGround ? 'opacity-50' : ''}`}
             style={{ 
-              left: t.x - worldPosition, 
+              left: t.x, 
               top: t.y, 
               width: TRASH_WIDTH, 
               height: TRASH_HEIGHT,
