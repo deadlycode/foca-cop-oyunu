@@ -55,7 +55,7 @@ interface NegativeScore {
 
 const App: React.FC = () => {
   const [player, setPlayer] = useState<Player>({ 
-    x: 50, 
+    x: GAME_WIDTH / 2 - PLAYER_WIDTH / 2, 
     y: GAME_HEIGHT - PLAYER_HEIGHT - 10,
     isJumping: false,
     lastJumpTime: 0,
@@ -74,6 +74,7 @@ const App: React.FC = () => {
   const negativeAudioRef = useRef<HTMLAudioElement | null>(null);
   const [keysPressed, setKeysPressed] = useState<Set<string>>(new Set());
   const [isMobile, setIsMobile] = useState(false);
+  const [cameraOffset, setCameraOffset] = useState(0);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -121,19 +122,20 @@ const App: React.FC = () => {
     setIsMuted(!isMuted);
   };
 
+
   const generateTrashCan = useCallback(() => {
     return {
-      x: GAME_WIDTH + Math.random() * 300,
+      x: cameraOffset + GAME_WIDTH + Math.random() * 300,
       y: GAME_HEIGHT - TRASH_CAN_HEIGHT - 10
     };
-  }, []);
+  }, [cameraOffset]);
 
   const generateTrashPile = useCallback(() => {
     return {
-      x: GAME_WIDTH + Math.random() * 500,
+      x: cameraOffset + GAME_WIDTH + Math.random() * 500,
       y: GAME_HEIGHT - TRASH_PILE_HEIGHT - 10
     };
-  }, []);
+  }, [cameraOffset]);
 
   const jump = useCallback(() => {
     const currentTime = Date.now();
@@ -187,11 +189,11 @@ const App: React.FC = () => {
     const gameLoop = setInterval(() => {
       setPlayer(prev => {
         let newX = prev.x;
-        if (keysPressed.has('ArrowLeft') && !prev.isJumping) {
-          newX = Math.max(0, prev.x - PLAYER_SPEED);
+        if (keysPressed.has('ArrowLeft')) {
+          newX = Math.max(cameraOffset, prev.x - PLAYER_SPEED);
         }
-        if (keysPressed.has('ArrowRight') && !prev.isJumping) {
-          newX = Math.min(GAME_WIDTH - PLAYER_WIDTH, prev.x + PLAYER_SPEED);
+        if (keysPressed.has('ArrowRight')) {
+          newX = Math.min(cameraOffset + GAME_WIDTH - PLAYER_WIDTH, prev.x + PLAYER_SPEED);
         }
         if (keysPressed.has('Space')) {
           jump();
@@ -220,10 +222,15 @@ const App: React.FC = () => {
         });
       }
 
+      setCameraOffset(prev => {
+        const targetOffset = player.x - GAME_WIDTH / 2 + PLAYER_WIDTH / 2;
+        return prev + (targetOffset - prev) * 0.1;
+      });
+
       setTrashCans(prev => {
         const newCans = prev
           .map(can => ({ ...can, x: can.x - SCROLL_SPEED }))
-          .filter(can => can.x > -TRASH_CAN_WIDTH);
+          .filter(can => can.x > cameraOffset - TRASH_CAN_WIDTH);
         
         if (newCans.length < 3) {
           newCans.push(generateTrashCan());
@@ -235,7 +242,7 @@ const App: React.FC = () => {
       setTrashPiles(prev => {
         const newPiles = prev
           .map(pile => ({ ...pile, x: pile.x - SCROLL_SPEED }))
-          .filter(pile => pile.x > -TRASH_PILE_WIDTH);
+          .filter(pile => pile.x > cameraOffset - TRASH_PILE_WIDTH);
         
         if (newPiles.length < 2) {
           newPiles.push(generateTrashPile());
@@ -261,7 +268,7 @@ const App: React.FC = () => {
           velocityY: t.velocityY + 0.5,
           velocityX: t.velocityX * 0.99
         };
-      }).filter(t => t.x > -TRASH_WIDTH));
+      }).filter(t => t.x > cameraOffset - TRASH_WIDTH));
 
       setNegativeScores(prev => 
         prev.map(score => ({
@@ -274,7 +281,7 @@ const App: React.FC = () => {
     }, 16);
 
     return () => clearInterval(gameLoop);
-  }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed]);
+  }, [generateTrashCan, generateTrashPile, player.isJumping, jump, throwTrash, keysPressed, cameraOffset]);
 
   useEffect(() => {
     trash.forEach((t, index) => {
@@ -310,33 +317,48 @@ const App: React.FC = () => {
         }
         setNegativeScores(prev => [
           ...prev,
-          { value: TRASH_PILE_PENALTY, x: player.x, y: player.y, opacity: 1 }
+          { value: TRASH_PILE_PENALTY, x: player.x - cameraOffset, y: player.y, opacity: 1 }
         ]);
         jump();
       }
     });
-  }, [trash, trashCans, trashPiles, player, jump]);
+  }, [trash, trashCans, trashPiles, player, jump, cameraOffset]);
 
-  const handleTouchStart = (e: React.TouchEvent) => {
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     const touch = e.touches[0];
     const gameRect = e.currentTarget.getBoundingClientRect();
     const touchX = touch.clientX - gameRect.left;
     const touchY = touch.clientY - gameRect.top;
 
-    if (touchY < GAME_HEIGHT / 2) {
-      throwTrash();
-    } else if (touchX < GAME_WIDTH / 3) {
-      setKeysPressed(prev => new Set(prev).add('ArrowLeft'));
-    } else if (touchX > GAME_WIDTH * 2 / 3) {
-      setKeysPressed(prev => new Set(prev).add('ArrowRight'));
-    } else {
+    if (touchY < GAME_HEIGHT / 3) {
       jump();
+    } else if (touchX < GAME_WIDTH / 2) {
+      setKeysPressed(prev => new Set(prev).add('ArrowLeft'));
+    } else {
+      setKeysPressed(prev => new Set(prev).add('ArrowRight'));
     }
-  };
+  }, [jump]);
 
-  const handleTouchEnd = () => {
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    const touch = e.touches[0];
+    const gameRect = e.currentTarget.getBoundingClientRect();
+    const touchX = touch.clientX - gameRect.left;
+
     setKeysPressed(new Set());
-  };
+    if (touchX < GAME_WIDTH / 2) {
+      setKeysPressed(prev => new Set(prev).add('ArrowLeft'));
+    } else {
+      setKeysPressed(prev => new Set(prev).add('ArrowRight'));
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    setKeysPressed(new Set());
+  }, []);
+
+  const handleTap = useCallback(() => {
+    throwTrash();
+  }, [throwTrash]);
 
   return (
     <div className="flex justify-center items-center h-screen bg-blue-200">
@@ -348,12 +370,14 @@ const App: React.FC = () => {
           touchAction: 'none'
         }}
         onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
+        onClick={handleTap}
       >
         <div
           style={{
             position: 'absolute',
-            left: backgroundPosition,
+            left: backgroundPosition - cameraOffset,
             top: 0,
             width: GAME_WIDTH * 2,
             height: GAME_HEIGHT,
@@ -370,7 +394,7 @@ const App: React.FC = () => {
             alt="Çöp Kovası"
             className="absolute"
             style={{ 
-              left: can.x, 
+              left: can.x - cameraOffset, 
               top: can.y, 
               width: TRASH_CAN_WIDTH, 
               height: TRASH_CAN_HEIGHT,
@@ -385,7 +409,7 @@ const App: React.FC = () => {
             alt="Çöp Yığını"
             className="absolute"
             style={{ 
-              left: pile.x, 
+              left: pile.x - cameraOffset, 
               top: pile.y, 
               width: TRASH_PILE_WIDTH, 
               height: TRASH_PILE_HEIGHT,
@@ -398,7 +422,7 @@ const App: React.FC = () => {
           alt="İnsan"
           className="absolute"
           style={{ 
-            left: player.x, 
+            left: player.x - cameraOffset, 
             top: player.y, 
             width: PLAYER_WIDTH,
             height: PLAYER_HEIGHT,
@@ -413,7 +437,7 @@ const App: React.FC = () => {
             alt="Çöp"
             className={`absolute ${t.onGround ? 'opacity-50' : ''}`}
             style={{ 
-              left: t.x, 
+              left: t.x - cameraOffset, 
               top: t.y, 
               width: TRASH_WIDTH, 
               height: TRASH_HEIGHT,
@@ -443,13 +467,6 @@ const App: React.FC = () => {
         >
           {isMuted ? '🔇' : '🔊'}
         </button>
-        {isMobile && (
-          <div className="absolute bottom-4 left-4 right-4 flex justify-between" style={{ zIndex: 5 }}>
-            <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => setKeysPressed(prev => new Set(prev).add('ArrowLeft'))} onTouchEnd={handleTouchEnd}>Sol</button>
-            <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={jump} onTouchEnd={handleTouchEnd}>Zıpla</button>
-            <button className="bg-blue-500 text-white px-4 py-2 rounded" onTouchStart={() => setKeysPressed(prev => new Set(prev).add('ArrowRight'))} onTouchEnd={handleTouchEnd}>Sağ</button>
-          </div>
-        )}
       </div>
     </div>
   );
